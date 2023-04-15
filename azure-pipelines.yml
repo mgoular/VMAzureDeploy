@@ -1,0 +1,23 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: AzureCLI@2
+  displayName: 'Azure Login'
+  inputs:
+    azureSubscription: 'c25cf23c-8540-4b7f-a25e-025d92acec18'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az account set --subscription $(azureSubscription)
+- task: AzureCLI@2
+  displayName: 'Deploy to Azure'
+  inputs:
+    azureSubscription: 'c25cf23c-8540-4b7f-a25e-025d92acec18'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az deployment group create --resource-group VirtualMachines --template-file azuredeploy.json --parameters vmName=myvm --parameters adminUsername=myuser --parameters adminPassword=mysecret --parameters location=West US 2
