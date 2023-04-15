@@ -1,74 +1,175 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": {},
-  "variables": {},
   "resources": [
     {
       "type": "Microsoft.Compute/virtualMachines",
-      "apiVersion": "2021-04-01",
-      "name": "myVM",
-      "location": "[resourceGroup().location]",
+      "apiVersion": "2021-03-01",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('nicName'))]"
+      ],
       "properties": {
         "hardwareProfile": {
-          "vmSize": "Standard_B1ls"
+          "vmSize": "Standard_B1s"
         },
         "storageProfile": {
           "imageReference": {
             "publisher": "Canonical",
             "offer": "UbuntuServer",
-            "sku": "18.04-LTS",
+            "sku": "20.04-LTS",
             "version": "latest"
           },
           "osDisk": {
-            "createOption": "FromImage"
+            "createOption": "fromImage",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+            }
           }
         },
         "osProfile": {
-          "computerName": "myVM",
+          "computerName": "[parameters('vmName')]",
           "adminUsername": "[parameters('adminUsername')]",
           "adminPassword": "[parameters('adminPassword')]"
         },
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'myVMNic')]"
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('nicName'))]"
             }
           ]
         }
-      },
-      "resources": [
-        {
-          "type": "Microsoft.Network/networkInterfaces",
-          "apiVersion": "2021-04-01",
-          "name": "myVMNic",
-          "location": "[resourceGroup().location]",
-          "properties": {
-            "ipConfigurations": [
-              {
-                "name": "ipconfig1",
-                "properties": {
-                  "subnet": {
-                    "id": "[variables('subnetRef')]"
-                  }
-                }
-              }
-            ]
-          }
-        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2021-03-01",
+      "name": "[parameters('nicName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]",
+        "[concat('Microsoft.Network/publicIpAddresses/', parameters('publicIpName'))]"
       ],
-      "outputs": {
-        "ipAddress": {
-          "type": "string",
-          "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', 'myVMNic')).ipConfigurations[0].properties.privateIPAddress]"
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig",
+            "properties": {
+              "subnet": {
+                "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '/subnets/', parameters('subnetName'))]"
+              },
+              "publicIpAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIpAddresses', parameters('publicIpName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIpAddresses",
+      "apiVersion": "2021-03-01",
+      "name": "[parameters('publicIpName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publicIpAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('dnsLabelPrefix')]"
         }
       }
-    }
-  ],
-  "outputs": {
-    "ipAddress": {
-      "type": "string",
-      "value": "[reference('myVM').privateIps]"
-    }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2021-03-01",
+      "name": "[parameters('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('addressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('subnetName')]",
+        "properties": {
+          "addressPrefix": "[parameters('subnetAddressPrefix')]"
+        }
+      }
+    ]
   }
+}
+],
+"parameters": {
+"vmName": {
+"type": "string",
+"metadata": {
+"description": "The name of the virtual machine."
+}
+},
+"location": {
+"type": "string",
+"defaultValue": "eastus",
+"metadata": {
+"description": "The location for the virtual machine."
+}
+},
+"adminUsername": {
+"type": "string",
+"metadata": {
+"description": "The administrator username for the virtual machine."
+}
+},
+"adminPassword": {
+"type": "securestring",
+"metadata": {
+"description": "The administrator password for the virtual machine."
+}
+},
+"dnsLabelPrefix": {
+"type": "string",
+"metadata": {
+"description": "The prefix for the public DNS name."
+}
+},
+"vnetName": {
+"type": "string",
+"metadata": {
+"description": "The name of the virtual network."
+}
+},
+"addressPrefix": {
+"type": "string",
+"defaultValue": "10.0.0.0/16",
+"metadata": {
+"description": "The address prefix for the virtual network."
+}
+},
+"subnetName": {
+"type": "string",
+"metadata": {
+"description": "The name of the subnet."
+}
+},
+"subnetAddressPrefix": {
+"type": "string",
+"defaultValue": "10.0.0.0/24",
+"metadata": {
+"description": "The address prefix for the subnet."
+}
+},
+"publicIpName": {
+"type": "string",
+"metadata": {
+"description": "The name of the public IP address."
+}
+},
+"nicName": {
+"type": "string",
+"metadata": {
+"description": "The name of the network interface."
+}
+}
+}
 }
