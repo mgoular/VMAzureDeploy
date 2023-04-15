@@ -1,0 +1,22 @@
+name: Azure Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - run: az group create --name myResourceGroup --location eastus
+      - run: az deployment group create --resource-group myResourceGroup --template-file azuredeploy.json --parameters azuredeploy.parameters.json
+      - name: Get the virtual machine IP address
+        run: echo "The virtual machine IP address is ${{ fromJson(steps.deploy.outputs.output).ipAddress }}"
+        id: deploy
+        env:
+          DEPLOYMENT_NAME: myDeployment
